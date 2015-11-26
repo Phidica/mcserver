@@ -37,7 +37,7 @@ Server directory names cannot contain whitespace or particularly fancy character
 
 Each server directory must contain a *run.sh* script that will cause that server to start. An example of a valid *run.sh* script is the following:
 
-    $ java -Xms2G -Xmx4G -jar ../minecraft_server.1.8.8.jar nogui
+    java -Xms2G -Xmx4G -jar ../minecraft_server.1.8.8.jar nogui
 
 Note that the implication here is that the main servers directory contains server JAR files, which is recommended to keep them out of the backups. If you wish to keep the server JAR in the server directory, do so and remove the *../* from the example above
 
