@@ -14,7 +14,9 @@ Planned features:
 ## Requirements
 The script requires the following packages and libraries:
 * python
-  * sys, getopt, pyjavaproperties
+  * sys
+  * getopt
+  * pyjavaproperties
 
 You may need to install pyjavaproperties:
 
