@@ -1,0 +1,212 @@
+#!/bin/sh
+
+# Author: Rhotias B
+# Create: 2015-07-10
+
+# v0.1: 2015-07-10
+# v1.0: 2015-07-14
+
+serversDir=~/.minecraft-server
+backupsDir=$serversDir/backups
+itsNotTomorrowUntilIWakeUp=true # True - Up until 06:00, the date will be considered the previous day
+reminder="Pause your torrents!" # An optional short reminder printed immediately after execution; set to "" to ignore
+
+_requestServer() # _resultVar
+{
+  local _requestServer_resultVar=$1
+  local serversArr=()
+
+  # Get array of directories in the serverDir, that aren't $backupsDir
+  for file in $serversDir/*; do
+    if [[ -d "$file" && "$(basename $file)" != "$(basename $backupsDir)" ]]; then
+      serversArr+=("$(basename $file)")
+    fi
+  done
+
+  # Request user input and set _resultVar to the chosen server
+  printf "%s\n" "Select a server by ID"
+  for index in ${!serversArr[*]}; do # Gets an array of the array indices
+    printf "%s\n" "  ($index) ${serversArr[$index]}"
+  done
+  while true; do
+    read -p "[0]: " usrOpt
+    if [[ $usrOpt -ge 0 && $usrOpt -lt ${#serversArr[*]} ]]; then # Checks against total number of entries in array
+      # Set the variable which was passed to this function to the chosen server
+      eval $_requestServer_resultVar="${serversArr[$usrOpt]}"
+      break
+    else
+      printf "%s\n" "  Error: Invalid selection"
+    fi
+  done
+}
+
+_launch()
+{
+  # Put the server choice into a variable
+  local serverBasename
+  _requestServer serverBasename
+
+  # Offer the user to change the server MotD
+  _changeMotd serverBasename
+
+  printf "\n"
+
+  printf "Debug: pretending to start server in $serverBasename \n"
+  # cd "$serversDir/$serverBasename"; sh run.sh
+
+  printf "\n%s\n" "(Returning to mcserver)"
+
+  printf "%s\n" "Back up this server now?"
+  while true; do
+    read -p "[y]: " usrOpt
+    case $usrOpt in
+      y|Y|"")
+        _backUp "$serverBasename"; break
+        ;;
+      n|N)
+        break
+        ;;
+      *)
+        printf "%s\n" "  Error: Invalid selection"
+        ;;
+    esac
+  done
+}
+
+_backUp() # serverBasename
+{
+  local serverBasename=$1
+
+  if [[ $serverBasename == "" ]]; then
+    _requestServer serverBasename
+  fi
+  serverDir="$serversDir/$serverBasename"
+
+  # Get current date in the local timezone
+  local date="$(date "+%Y-%m-%d")"
+
+  # Personal preference: I consider it to be the previous day if it's still not sunrise (06:00)
+  if [[ $itsNotTomorrowUntilIWakeUp == true && $(date "+%H") -lt 6 ]]; then
+    # Get current date in the UTC timezone, which is ~10 hours behind me here in Australia
+    local date="$(date -u "+%Y-%m-%d")"
+  fi
+
+  local bkDir="$backupsDir/$date"
+
+  # Create or use backup directory, or abort on error
+  printf "%s" "Making backup directory for $date... "
+  mkdir "$bkDir" >/dev/null 2>&1
+  if [[ $? == 0 ]]; then
+    printf "%s\n" "Done!"
+  elif [[ $? == 1 ]]; then
+    printf "%s\n" "Found existing directory; using it"
+  else
+    printf "%s\n" "Failed with error code $?. Aborting backup"
+    exit 1
+  fi
+
+  # Check for existing backups and either delete them or prepare to skip the copying step
+  local doCopy=true
+  if [[ -e "$bkDir/$serverBasename" ]]; then
+    printf "%s\n" "A backup of $serverBasename for $date already exists. Delete and replace it?"
+    while true; do
+      read -p "[y]: " usrOpt
+      case $usrOpt in
+        y|Y|"")
+          rm -rf "$bkDir/$serverBasename" >/dev/null 2>&1
+          break
+          ;;
+        n|N)
+          doCopy=false
+          break
+          ;;
+        *)
+          printf "%s\n" "  Error: Invalid selection"
+          ;;
+      esac
+    done
+  fi
+
+  # Copy the server data, or abort on error
+  if [[ $doCopy == true ]]; then
+    printf "%s" "Copying server files for $serverBasename... "
+    cp -r "$serverDir" "$bkDir" >/dev/null 2>&1
+    if [[ $? == 0 ]]; then
+      printf "%s\n" "Done!"
+    else
+      printf "%s\n" "Failed with error code $?. Aborting backup"
+      exit 1
+    fi
+  fi
+
+  # If necessary, recursively call the function to back up another server
+  printf "%s\n" "Back up another server for this same date?"
+  while true; do
+    read -p "[n]: " usrOpt
+    case $usrOpt in
+      n|N|"")
+        break
+        ;;
+      y|Y)
+        local newServerBasename=$serverBasename
+        while [[ $newServerBasename == $serverBasename ]]; do
+          printf "%s\n" "Choose a server that isn't this one"
+          _requestServer newServerBasename
+        done
+        _backUp "$newServerBasename"
+        break
+        ;;
+      *)
+        printf "%s\n" "  Error: Invalid selection"
+        ;;
+    esac
+  done
+}
+
+_changeMotd() # serverBasename
+{
+  local infile="$serversDir/$serverBasename/server.properties"
+
+  if [[ -e $infile ]]; then
+    local motd="$(python mcserver-motd $infile -g)"
+
+    printf "%s\n" "Set message of the day"
+    while true; do
+      read -p "[$motd]: " usrOpt
+      case "$usrOpt" in
+        "")
+          break
+          ;;
+        *)
+          python mcserver-motd $infile -s "$usrOpt"
+          break
+          ;;
+      esac
+    done
+  else # infile does not exist
+    printf "%s\n" "mcserver error: $infile does not exist. It may not have been created yet"
+  fi
+}
+
+# program
+if [[ $reminder != "" ]]; then
+  printf "%s\n" "(Reminder: $reminder)"
+fi
+printf "%s\n" "Select mode"
+printf "%s\n" "  (0) Launch"
+printf "%s\n" "  (1) Create backup"
+while true; do
+  read -p "[0]: " usrOpt
+  case $usrOpt in
+    0|launch|l|"")
+      _launch; break
+      ;;
+    1|create|backup|c|b)
+      _backUp; break
+      ;;
+    *)
+      printf "%s\n" "  Error: Invalid selection"
+      ;;
+  esac
+done
+# end program
