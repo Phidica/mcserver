@@ -10,7 +10,7 @@ serversDir=~/.minecraft-server
 backupsDir=$serversDir/backups
 itsNotTomorrowUntilIWakeUp=true # If true - Up until 06:00, the date will be considered the previous day
 reminder="Pause your torrents!" # An optional short reminder printed immediately after execution; set to "" to ignore
-debug=false # If true - run.sh will not actually be executed, all other scripting works as normal
+debug=true # If true - run.sh will not actually be executed, all other scripting works as normal
 
 _requestServer() # _resultVar
 {
@@ -19,7 +19,7 @@ _requestServer() # _resultVar
 
   # Ensure serversDir exists
   if [[ ! -e "$serversDir" ]]; then
-    printf "%s\n" "Error: $serversDir does not exist. Make it and put some servers in there!"
+    printf "%s\n" "mcserver error: $serversDir does not exist. Make it and put some servers in there!"
     exit 1
   fi
 
@@ -32,7 +32,7 @@ _requestServer() # _resultVar
 
   # Check that serversArr contains at least one element
   if [[ ${#serversArr[@]} -eq 0 ]]; then
-    printf "%s\n" "Error: No servers found in $serversDir"
+    printf "%s\n" "mcserver error: No servers found in $serversDir"
     exit 1
   fi
 
@@ -61,7 +61,7 @@ _launch()
 
   # Check we'll be able to start the server
   if [[ ! -e "$serversDir/$serverBasename/run.sh" ]]; then
-    printf "%s\n" "Error: No run.sh file found for $serverBasename, server cannot be started"
+    printf "%s\n" "mcserver error: No run.sh file found for $serverBasename, server cannot be started"
     exit 1
   fi
 
@@ -72,7 +72,7 @@ _launch()
   if [[ $debug == true ]]; then
     printf "Debug: pretending to start server in $serverBasename \n"
   else
-    printf "\n%s\n" "(Entering java)"
+    printf "%s\n\n" "(Entering java)"
     cd "$serversDir/$serverBasename"; sh run.sh
     printf "\n%s\n" "(Returning to mcserver)"
   fi
@@ -102,7 +102,7 @@ _backUp() # serverBasename
   if [[ $serverBasename == "" ]]; then
     _requestServer serverBasename
   fi
-  serverDir="$serversDir/$serverBasename"
+  local serverDir="$serversDir/$serverBasename"
 
   # Get current date in the local timezone
   local date="$(date "+%Y-%m-%d")"
@@ -187,27 +187,38 @@ _backUp() # serverBasename
 
 _changeMotd() # serverBasename
 {
+  # Get location of the script itself
+  local mcserverDir="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
+
+  # If we don't have access to the Python script, don't try and use it
+  if [[ ! -e "$mcserverDir/mcserver-motd" ]]; then
+    printf "%s\n" "mcserver warning: mcserver-motd not found. Could not retrieve or change MotD"
+    return 1
+  fi
+
   local infile="$serversDir/$serverBasename/server.properties"
 
-  if [[ -e $infile ]]; then
-    local motd="$(python mcserver-motd $infile -g)"
-
-    printf "%s\n" "Set message of the day"
-    while true; do
-      read -p "[$motd]: " usrOpt
-      case "$usrOpt" in
-        "")
-          break
-          ;;
-        *)
-          python mcserver-motd $infile -s "$usrOpt"
-          break
-          ;;
-      esac
-    done
-  else # infile does not exist
-    printf "%s\n" "mcserver error: $infile does not exist. It may not have been created yet"
+  # If the server.properties file doesn't exist, we can't change it
+  if [[ ! -e $infile ]]; then
+    printf "%s\n" "mcserver warning: $infile does not exist. It may not have been created yet"
+    return 1
   fi
+
+  local motd="$(python "$mcserverDir/mcserver-motd" $infile -g)"
+
+  printf "%s\n" "Set message of the day"
+  while true; do
+    read -p "[$motd]: " usrOpt
+    case "$usrOpt" in
+      "")
+        break
+        ;;
+      *)
+        python "$mcserverDir/mcserver-motd" $infile -s "$usrOpt"
+        break
+        ;;
+    esac
+  done
 }
 
 # program
