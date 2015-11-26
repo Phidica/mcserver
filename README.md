@@ -31,13 +31,15 @@ Copy the *mcserver* and *mcserver-motd* files to your directory of choice. *~/.l
 
     $ chmod +x mcserver
 
-Edit the *mcserver* file if necessary to ensure it points at an existing servers directory containing more directories where each consists of the components for one server
+Edit the *mcserver* file, if necessary, to ensure it points to an existing main servers directory containing more directories where each consists of the components for one server
 
-Each directory must contain a *run.sh* script that will cause that server to start. An example of a valid *run.sh* script is the following:
+Server directory names cannot contain whitespace or particularly fancy characters
+
+Each server directory must contain a *run.sh* script that will cause that server to start. An example of a valid *run.sh* script is the following:
 
     java -Xms2G -Xmx4G -jar ../minecraft_server.1.8.8.jar nogui
 
-Note that the implication here is that the main servers directory contains server JAR files, which is recommended to keep them out of the backups. If you wish to keep the server JAR in the same directory as the server itself, do so and remove the *../* from the example above
+Note that the implication here is that the main servers directory contains server JAR files, which is recommended to keep them out of the backups. If you wish to keep the server JAR in the server directory, do so and remove the *../* from the example above
 
 ## Execution
 The primary program accepts no flags or arguments, just run:
