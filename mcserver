@@ -8,20 +8,33 @@
 
 serversDir=~/.minecraft-server
 backupsDir=$serversDir/backups
-itsNotTomorrowUntilIWakeUp=true # True - Up until 06:00, the date will be considered the previous day
+itsNotTomorrowUntilIWakeUp=true # If true - Up until 06:00, the date will be considered the previous day
 reminder="Pause your torrents!" # An optional short reminder printed immediately after execution; set to "" to ignore
+debug=false # If true - run.sh will not actually be executed, all other scripting works as normal
 
 _requestServer() # _resultVar
 {
   local _requestServer_resultVar=$1
   local serversArr=()
 
-  # Get array of directories in the serverDir, that aren't $backupsDir
+  # Ensure serversDir exists
+  if [[ ! -e "$serversDir" ]]; then
+    printf "%s\n" "Error: $serversDir does not exist. Make it and put some servers in there!"
+    exit 1
+  fi
+
+  # Get array of directories in the serversDir, that aren't $backupsDir
   for file in $serversDir/*; do
     if [[ -d "$file" && "$(basename $file)" != "$(basename $backupsDir)" ]]; then
       serversArr+=("$(basename $file)")
     fi
   done
+
+  # Check that serversArr contains at least one element
+  if [[ ${#serversArr[@]} -eq 0 ]]; then
+    printf "%s\n" "Error: No servers found in $serversDir"
+    exit 1
+  fi
 
   # Request user input and set _resultVar to the chosen server
   printf "%s\n" "Select a server by ID"
@@ -46,16 +59,25 @@ _launch()
   local serverBasename
   _requestServer serverBasename
 
+  # Check we'll be able to start the server
+  if [[ ! -e "$serversDir/$serverBasename/run.sh" ]]; then
+    printf "%s\n" "Error: No run.sh file found for $serverBasename, server cannot be started"
+    exit 1
+  fi
+
   # Offer the user to change the server MotD
   _changeMotd serverBasename
 
-  printf "\n"
+  # Run server
+  if [[ $debug == true ]]; then
+    printf "Debug: pretending to start server in $serverBasename \n"
+  else
+    printf "\n%s\n" "(Entering java)"
+    cd "$serversDir/$serverBasename"; sh run.sh
+    printf "\n%s\n" "(Returning to mcserver)"
+  fi
 
-  printf "Debug: pretending to start server in $serverBasename \n"
-  # cd "$serversDir/$serverBasename"; sh run.sh
-
-  printf "\n%s\n" "(Returning to mcserver)"
-
+  # Prompt for backups
   printf "%s\n" "Back up this server now?"
   while true; do
     read -p "[y]: " usrOpt
