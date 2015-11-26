@@ -10,7 +10,7 @@ serversDir=~/.minecraft-server
 backupsDir=$serversDir/backups
 itsNotTomorrowUntilIWakeUp=true # If true - Up until 06:00, the date will be considered the previous day
 reminder="Pause your torrents!" # An optional short reminder printed immediately after execution; set to "" to ignore
-debug=true # If true - run.sh will not actually be executed, all other scripting works as normal
+debug=false # If true - run.sh will not actually be executed, all other scripting works as normal
 
 _requestServer() # _resultVar
 {
