@@ -8,9 +8,10 @@
 
 serversDir=~/.minecraft-server
 backupsDir=$serversDir/backups
+declare -a templateFiles=("run.sh" "eula.txt" "ops.json") # Files to copy from existing server when making new server
 itsNotTomorrowUntilIWakeUp=true # If true - Up until 06:00, the date will be considered the previous day
-reminder="Pause your torrents!" # An optional short reminder printed immediately after execution; set to "" to ignore
-debug=false # If true - run.sh will not actually be executed, all other scripting works as normal
+reminder="Pause your torrents!" # An optional short reminder printed at startup; set to "" to ignore
+debug=false # If true - run.sh will not actually be executed, everything else works as normal
 
 _requestServer() # _resultVar
 {
@@ -23,7 +24,7 @@ _requestServer() # _resultVar
     exit 1
   fi
 
-  # Get array of directories in the serversDir, that aren't $backupsDir
+  # Get array of directories in the serversDir, that aren't the backups or templates dirs if they're in there
   for file in $serversDir/*; do
     if [[ -d "$file" && "$(basename $file)" != "$(basename $backupsDir)" ]]; then
       serversArr+=("$(basename $file)")
@@ -48,16 +49,22 @@ _requestServer() # _resultVar
       eval $_requestServer_resultVar="${serversArr[$usrOpt]}"
       break
     else
-      printf "%s\n" "  Error: Invalid selection"
+      printf "%s\n" "  Invalid selection"
     fi
   done
 }
 
-_launch()
+_launch() # serverBasename (optional)
 {
+  serverBasenameOpt=$1
+
   # Put the server choice into a variable
   local serverBasename
-  _requestServer serverBasename
+  if [[ $serverBasenameOpt == "" ]]; then
+    _requestServer serverBasename
+  else
+    serverBasename=$serverBasenameOpt
+  fi
 
   # Check we'll be able to start the server
   if [[ ! -e "$serversDir/$serverBasename/run.sh" ]]; then
@@ -89,97 +96,104 @@ _launch()
         break
         ;;
       *)
-        printf "%s\n" "  Error: Invalid selection"
+        printf "%s\n" "  Invalid selection"
         ;;
     esac
   done
 }
 
-_backUp() # serverBasename
+_new()
 {
-  local serverBasename=$1
+  # Get target
+  while true; do
+    read -p "Name of new server (A-z_0-9): " targetServer
+    if [[ "$targetServer" == "" ]]; then
+      printf "%s\n" "  Invalid selection - No name entered"
+    elif [[ -e "$serversDir/$targetServer" ]]; then
+      printf "%s\n" "  Invalid selection - A server with that name already exists"
+    else
+      break
+    fi
+  done
 
-  if [[ $serverBasename == "" ]]; then
-    _requestServer serverBasename
-  fi
-  local serverDir="$serversDir/$serverBasename"
+  # Get source
+  local sourceServer
+  printf "%s\n" "Choose the existing server which will provide the configuration files for $targetServer"
+  _requestServer sourceServer
 
-  # Get current date in the local timezone
-  local date="$(date "+%Y-%m-%d")"
-
-  # Personal preference: I consider it to be the previous day if it's still not sunrise (06:00)
-  if [[ $itsNotTomorrowUntilIWakeUp == true && $(date "+%H") -lt 6 ]]; then
-    # Get current date in the UTC timezone, which is ~10 hours behind me here in Australia
-    date="$(date -u "+%Y-%m-%d")"
-  fi
-
-  local bkDir="$backupsDir/$date"
-
-  # Create or use backup directory, or abort on error
-  printf "%s" "Making backup directory for $date... "
-  mkdir "$bkDir" >/dev/null 2>&1
+  # Attempt to make target
+  printf "%s" "Making directory for $targetServer... "
+  mkdir "$serversDir/$targetServer" >/dev/null 2>&1
   if [[ $? == 0 ]]; then
     printf "%s\n" "Done!"
-  elif [[ $? == 1 ]]; then
-    printf "%s\n" "Found existing directory; using it"
   else
-    printf "%s\n" "Failed with error code $?. Aborting backup"
+    printf "%s\n" "Failed with mkdir error $?. Aborting backup"
     exit 1
   fi
 
-  # Check for existing backups and either delete them or prepare to skip the copying step
-  local doCopy=true
-  if [[ -e "$bkDir/$serverBasename" ]]; then
-    printf "%s\n" "A backup of $serverBasename for $date already exists. Delete and replace it?"
-    while true; do
-      read -p "[y]: " usrOpt
-      case $usrOpt in
-        y|Y|"")
-          rm -rf "$bkDir/$serverBasename" >/dev/null 2>&1
-          break
-          ;;
-        n|N)
-          doCopy=false
-          break
-          ;;
-        *)
-          printf "%s\n" "  Error: Invalid selection"
-          ;;
-      esac
-    done
-  fi
-
-  # Copy the server data, or abort on error
-  if [[ $doCopy == true ]]; then
-    printf "%s" "Copying server files for $serverBasename... "
-    cp -r "$serverDir" "$bkDir" >/dev/null 2>&1
+  # Attempt to copy source files
+  for file in "${templateFiles[@]}"; do
+    printf "%s" "Copying $file from $sourceServer... "
+    cp "$serversDir/$sourceServer/$file" "$serversDir/$targetServer" >/dev/null 2>&1
     if [[ $? == 0 ]]; then
       printf "%s\n" "Done!"
     else
-      printf "%s\n" "Failed with error code $?. Aborting backup"
-      exit 1
+      printf "%s\n" "Failed with cp error $?. File may not exist"
     fi
-  fi
+  done
 
-  # If necessary, recursively call the function to back up another server
-  printf "%s\n" "Back up another server for this same date?"
+  # Bring in world data
   while true; do
-    read -p "[n]: " usrOpt
+    # Dir prompt
+    local worldDir="$serversDir/$sourceServer/world" # Default choice
+    printf "%s\n" "Select the world directory containing level data"
+    printf "%s\n" "  (0) Skip this step"
+    while true; do
+      read -e -p "[$worldDir]: " usrOpt
+      case $usrOpt in
+        0)
+          worldDir=""
+          break # end dir prompt
+          ;;
+        "")
+          break # end dir prompt
+          ;;
+        *)
+          worldDir=$usrOpt # Don't quote or you might kill a ~
+          break # end dir prompt
+          ;;
+      esac
+    done
+
+    if [[ "$worldDir" == "" ]]; then
+      break # End bring in world data
+    fi
+
+    # Attempt the copy
+    printf "%s" "Copying level data from $worldDir... "
+    cp -r "$worldDir" "$serversDir/$targetServer" >/dev/null 2>&1
+    if [[ $? == 0 ]]; then
+      printf "%s\n" "Done!"
+      break # End bring in world data
+    else
+      printf "%s\n" "Failed with cp error $?. Directory may not exist"
+      rm -r "$serversDir/$targetServer/$(basename worldDir)" # Clear partial progress, retry bring in world data
+    fi
+  done
+
+  # Prompt for whether to start server or let script execution finish
+  printf "%s\n" "Launch this server now?"
+  while true; do
+    read -p "[y]: " usrOpt
     case $usrOpt in
-      n|N|"")
-        break
+      y|Y|"")
+        _launch "$targetServer"; break
         ;;
-      y|Y)
-        local newServerBasename=$serverBasename
-        while [[ $newServerBasename == $serverBasename ]]; do
-          printf "%s\n" "Choose a server that isn't this one"
-          _requestServer newServerBasename
-        done
-        _backUp "$newServerBasename"
+      n|N)
         break
         ;;
       *)
-        printf "%s\n" "  Error: Invalid selection"
+        printf "%s\n" "  Invalid selection"
         ;;
     esac
   done
@@ -221,24 +235,118 @@ _changeMotd() # serverBasename
   done
 }
 
+_backUp() # serverBasename
+{
+  local serverBasename=$1
+
+  if [[ $serverBasename == "" ]]; then
+    _requestServer serverBasename
+  fi
+  local serverDir="$serversDir/$serverBasename"
+
+  # Get current date in the local timezone
+  local date="$(date "+%Y-%m-%d")"
+
+  # Personal preference: I consider it to be the previous day if it's still not sunrise (06:00)
+  if [[ $itsNotTomorrowUntilIWakeUp == true && $(date "+%H") -lt 6 ]]; then
+    # Get current date in the UTC timezone, which is ~10 hours behind me here in Australia
+    date="$(date -u "+%Y-%m-%d")"
+  fi
+
+  local bkDir="$backupsDir/$date"
+
+  # Create or use backup directory, or abort on error
+  printf "%s" "Making backup directory for $date... "
+  mkdir "$bkDir" >/dev/null 2>&1
+  if [[ $? == 0 ]]; then
+    printf "%s\n" "Done!"
+  elif [[ $? == 1 ]]; then
+    printf "%s\n" "Found existing directory; using it"
+  else
+    printf "%s\n" "Failed with mkdir error $?. Aborting backup"
+    exit 1
+  fi
+
+  # Check for existing backups and either delete them or prepare to skip the copying step
+  local doCopy=true
+  if [[ -e "$bkDir/$serverBasename" ]]; then
+    printf "%s\n" "A backup of $serverBasename for $date already exists. Delete and replace it?"
+    while true; do
+      read -p "[y]: " usrOpt
+      case $usrOpt in
+        y|Y|"")
+          rm -rf "$bkDir/$serverBasename" >/dev/null 2>&1
+          break
+          ;;
+        n|N)
+          doCopy=false
+          break
+          ;;
+        *)
+          printf "%s\n" "  Invalid selection"
+          ;;
+      esac
+    done
+  fi
+
+  # Copy the server data, or abort on error
+  if [[ $doCopy == true ]]; then
+    printf "%s" "Copying server files for $serverBasename... "
+    cp -r "$serverDir" "$bkDir" >/dev/null 2>&1
+    if [[ $? == 0 ]]; then
+      printf "%s\n" "Done!"
+    else
+      printf "%s\n" "Failed with cp error $?. Aborting backup"
+      exit 1
+    fi
+  fi
+
+  # If necessary, recursively call the function to back up another server
+  printf "%s\n" "Back up another server for this same date?"
+  while true; do
+    read -p "[n]: " usrOpt
+    case $usrOpt in
+      n|N|"")
+        break
+        ;;
+      y|Y)
+        local newServerBasename=$serverBasename
+        while [[ $newServerBasename == $serverBasename ]]; do
+          printf "%s\n" "Choose a server that isn't this one"
+          _requestServer newServerBasename
+        done
+        _backUp "$newServerBasename"
+        break
+        ;;
+      *)
+        printf "%s\n" "  Invalid selection"
+        ;;
+    esac
+  done
+}
+
 # program
 if [[ $reminder != "" ]]; then
   printf "%s\n" "(Reminder: $reminder)"
 fi
 printf "%s\n" "Select mode"
-printf "%s\n" "  (0) Launch"
-printf "%s\n" "  (1) Create backup"
+printf "%s\n" "  (0) Launch a new or existing server"
+printf "%s\n" "  (1) Make new server from existing server"
+printf "%s\n" "  (2) Back up existing server"
 while true; do
   read -p "[0]: " usrOpt
   case $usrOpt in
     0|launch|l|"")
       _launch; break
       ;;
-    1|create|backup|c|b)
+    1|new|n)
+      _new; break
+      ;;
+    2|backup|b)
       _backUp; break
       ;;
     *)
-      printf "%s\n" "  Error: Invalid selection"
+      printf "%s\n" "  Invalid selection"
       ;;
   esac
 done

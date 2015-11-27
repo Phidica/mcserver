@@ -1,15 +1,21 @@
 # mcserver
-A collection of Bash and Python scripts to simplify the management of multiple Minecraft servers from a single unified location
+An interactive Bash script to simplify the management of multiple Minecraft servers from a single unified location, including launching, backing up, and changing the message of the day (MotD; requires Python)
 
 Current features:
 * All servers (logs, world, and associated configuration files) are stored in separate directories, by default located in *~/.minecraft-server*
 * All backups are stored in separate dated directories, by default located in *~/.minecraft-server/backups*
   * "backups" are just full copies of an entire server. The dated directory may contain backups of multiple servers for that day
-* The server message of the day (MotD) may be viewed and changed prior to launch
+* The server MotD may be viewed and changed prior to launch (requires Python)
 * Prompts for backing up the server are presented when the server is stopped
+* A new server can be created based on the template of an existing server, with level data imported from a custom location
 
 Planned features:
-* Ability to create a new server from a blank template, and populate the world with data from a chosen directory
+* Implementation of noninteractive flags and arguments
+
+## Screenshots
+![screenshot of directory tree](http://i.imgur.com/bnUIGwD.png)
+
+Figure 1: Example of recommended main servers directory structure
 
 ## Requirements
 The script requires the following packages and libraries:
@@ -39,7 +45,7 @@ Each server directory must contain a *run.sh* script that will cause that server
 
     java -Xms2G -Xmx4G -jar ../minecraft_server.1.8.8.jar nogui
 
-Note that the implication here is that the main servers directory contains server JAR files, which is recommended to keep them out of the backups. If you wish to keep the server JAR in the server directory, do so and remove the *../* from the example above
+Note that the implication here is that the main servers directory contains server JAR files, as seen in Figure 1, which is recommended to keep them out of the backups. If you wish to keep the server JAR in the server directory, do so and remove the *../* from the example above
 
 ## Execution
 The primary program accepts no flags or arguments, just run:
