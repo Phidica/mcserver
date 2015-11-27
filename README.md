@@ -11,6 +11,7 @@ Current features:
 
 Planned features:
 * Implementation of noninteractive flags and arguments
+* Interactive servers list sorted by date accessed, so default is most recent
 
 ## Screenshots
 ![screenshot of directory tree](http://i.imgur.com/bnUIGwD.png)
