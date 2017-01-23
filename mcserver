@@ -92,7 +92,7 @@ _launch() # serverBasename (optional)
   else
     printf "%s\n\n" "(Entering java)"
     cd "${serversDir}/${serverBasename}"; sh run.sh
-    printf "\n%s\n" "(Returning to mcserver)"
+    printf "\n%s\n" "(Exiting java)"
   fi
 
   # Prompt for backups
@@ -115,10 +115,6 @@ _launch() # serverBasename (optional)
 
 _new()
 {
-  # # well then
-  # printf "%s\n" "it's broken"
-  # return 1
-
   # Get target
   while true; do
     read -p "Name of new server (A-z_0-9): " targetServer
@@ -133,7 +129,7 @@ _new()
 
   # Get source
   local sourceServer
-  printf "%s\n" "Choose the existing server which will provide the configuration files for ${targetServer}"
+  printf "%s\n" "Choose the existing server which will provide the configuration files (but not the world files) for ${targetServer}"
   _requestServer sourceServer
 
   # Attempt to make target
@@ -229,7 +225,6 @@ _new()
 
     # Delete some files
   done
-
 
   # Prompt for whether to start server or let script execution finish
   printf "%s\n" "Launch this server now?"
