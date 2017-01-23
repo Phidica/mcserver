@@ -7,10 +7,10 @@ Current features:
   * "backups" are just full copies of an entire server. The dated directory may contain backups of multiple servers for that day
 * Interactive servers list is sorted by date modified, so default is most recently used
 * The server MotD may be viewed and changed prior to launch (requires Python)
-* Prompts for backing up the server are presented when the server is stopped
+* Prompts for backing up the server are presented when the server is stopped. Backups can also be run at will from the main menu
+* A new server can be created based on the template of an existing server, with level data imported from a custom location (optionally excluding player data)
 
 Planned features:
-* A new server can be created based on the template of an existing server, with level data imported from a custom location
 * Implementation of noninteractive flags and arguments
 * Extend `mcserver-motd` to handle all `server.properties` edits, especially to permit easy toggling of options such as command block validity
 

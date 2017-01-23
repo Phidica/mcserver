@@ -116,8 +116,8 @@ _launch() # serverBasename (optional)
 _new()
 {
   # # well then
-  printf "%s\n" "it's broken"
-  return 1
+  # printf "%s\n" "it's broken"
+  # return 1
 
   # Get target
   while true; do
@@ -160,17 +160,19 @@ _new()
   # Bring in world data
   while true; do
     # Dir prompt
-    local worldDir="${serversDir}/${sourceServer}/world" # Default choice
-    printf "%s\n" "Select the world directory containing level data"
+    local worldDir=""
+    local worldDirDefault="${serversDir}/${sourceServer}/world"
+    printf "%s\n" "Select a world directory containing level data to import"
     printf "%s\n" "  (0) Skip this step"
     while true; do
-      read -e -p "[${worldDir}]: " usrOpt
+      read -e -p "[${worldDirDefault}]: " usrOpt
       case ${usrOpt} in
         0)
           worldDir=""
           break # end dir prompt
           ;;
         "")
+          worldDir=${worldDirDefault}
           break # end dir prompt
           ;;
         *)
@@ -180,21 +182,54 @@ _new()
       esac
     done
 
-    if [[ "${worldDir}" == "" ]]; then
+    if [[ "${worldDir}" == "" ]]; then # User selected to skip this step
       break # End bring in world data
     fi
+
+    printf "%s\n" "Should player data be imported too?"
+    local playerImport=""
+    local playerImportDefault="n"
+    while true; do
+      read -e -p "[${playerImportDefault}]: " usrOpt
+      case ${usrOpt} in
+        y|Y)
+          playerImport=true
+          break
+          ;;
+        n|N|"")
+          playerImport=false
+          break
+          ;;
+        *)
+          printf "%s\n" "  Invalid selection"
+          ;;
+      esac
+    done
 
     # Attempt the copy
     printf "%s" "Copying level data from ${worldDir}... "
     cp -r "${worldDir}" "${serversDir}/${targetServer}" >/dev/null 2>&1
     if [[ ${?} == 0 ]]; then
       printf "%s\n" "Done!"
+
+      printf "%s" "Cleansing imported player data... "
+      rm -rf "${serversDir}/${targetServer}/$(basename ${worldDir})"/{playerdata,stats} >/dev/null 2>&1
+      if [[ ${?} == 0 ]]; then
+        printf "%s\n" "Done!"
+      else
+        printf "%s\n" "Failed with rm error ${?}. Player data may have not existed"
+      fi
+
       break # End bring in world data
     else
-      printf "%s\n" "Failed with cp error ${?}. Directory may not exist"
-      rm -r "${serversDir}/${targetServer}/$(basename ${worldDir})" # Clear partial progress, retry bring in world data
+      printf "%s\n" "Failed with cp error ${?}. Directory may have not existed"
+      rm -r "${serversDir}/${targetServer}/$(basename ${worldDir})" # Clear partial progress
+      continue # Retry bring in world data
     fi
+
+    # Delete some files
   done
+
 
   # Prompt for whether to start server or let script execution finish
   printf "%s\n" "Launch this server now?"
@@ -229,7 +264,7 @@ _changeMotd() # serverBasename
 
   # If the server.properties file doesn't exist, we can't change it
   if [[ ! -e ${infile} ]]; then
-    printf "%s\n" "mcserver warning: ${infile} does not exist. It may not have been created yet"
+    printf "%s\n" "mcserver warning: ${infile} does not exist. It may have not been created yet"
     return 1
   fi
 
