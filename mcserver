@@ -10,7 +10,7 @@ backupsDir=/home/phidica/.minecraft-server/backups
 declare -a templateFiles=("run.sh" "eula.txt" "ops.json") # Files to copy from existing server when making new server
 itsNotTomorrowUntilIWakeUp=true # If true - Up until 06:00, the date will be considered the previous day
 reminder="Pause your torrents!" # An optional short reminder printed at startup; set to "" to ignore
-debug=true # If true - run.sh will not actually be executed, everything else works as normal
+debug=false # If true - run.sh will not actually be executed, everything else works as normal
 
 _requestServer() # _resultVar
 {
