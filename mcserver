@@ -299,8 +299,8 @@ _backUp() # serverBasename
 
   # Personal preference: I consider it to be the previous day if it's still not sunrise (06:00)
   if [[ ${itsNotTomorrowUntilIWakeUp} == true && $(date "+%H") -lt 6 ]]; then
-    # Get current date in the UTC timezone, which is ~10 hours behind me here in Australia
-    date="$(date -u "+%Y-%m-%d")"
+    # Get the date 6 hours ago
+    date="$(date --date="6 hours ago" "+%Y-%m-%d")"
   fi
 
   local bkDir="${backupsDir}/${date}"
