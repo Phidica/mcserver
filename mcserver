@@ -1,13 +1,13 @@
 #!/bin/sh
 
-# Author: Rhotias B
+# Author: Phidica Veia
 # Create: 2015-07-10
 
 # v0.1: 2015-07-10
 # v1.0: 2015-07-14
 
-serversDir=~/.minecraft-server
-backupsDir=$serversDir/backups
+serversDir=/opt/phidica/.minecraft-server
+backupsDir=/home/phidica/.minecraft-server/backups
 declare -a templateFiles=("run.sh" "eula.txt" "ops.json") # Files to copy from existing server when making new server
 itsNotTomorrowUntilIWakeUp=true # If true - Up until 06:00, the date will be considered the previous day
 reminder="Pause your torrents!" # An optional short reminder printed at startup; set to "" to ignore
@@ -24,7 +24,7 @@ _requestServer() # _resultVar
     exit 1
   fi
 
-  # Get array of directories in the serversDir, that aren't the backups or templates dirs if they're in there
+  # Get array of directories in the serversDir, that aren't backupsDir
   for file in $serversDir/*; do
     if [[ -d "$file" && "$(basename $file)" != "$(basename $backupsDir)" ]]; then
       serversArr+=("$(basename $file)")
@@ -104,6 +104,10 @@ _launch() # serverBasename (optional)
 
 _new()
 {
+  # # well then
+  printf "%s\n" "it's broken"
+  return 1
+
   # Get target
   while true; do
     read -p "Name of new server (A-z_0-9): " targetServer
@@ -177,7 +181,7 @@ _new()
       break # End bring in world data
     else
       printf "%s\n" "Failed with cp error $?. Directory may not exist"
-      rm -r "$serversDir/$targetServer/$(basename worldDir)" # Clear partial progress, retry bring in world data
+      rm -r "$serversDir/$targetServer/$(basename $worldDir)" # Clear partial progress, retry bring in world data
     fi
   done
 

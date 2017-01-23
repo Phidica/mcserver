@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Author : Rhotias B
+# Author : Phidica Veia
 # Create : 2015-10-01
 
 # This is a support script for the mcserver Bash script. If you want to though, you can make it executable with "chmod +x mcserver-motd" and use it as described in the usage
@@ -39,15 +39,15 @@ def main(infile, argv):
       showUsage()
 
   p.store(open(infile,"w"))
-  # end def
 
-# program
+# Read the infile from the arguments, if possible
 try:
   infile = sys.argv[1]
 except IndexError:
   showUsage()
   sys.exit(2)
 
+# Operate on the infile using all subsequent arguments
 if __name__ == "__main__":
   main(infile, sys.argv[2:])
-# end program
+

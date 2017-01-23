@@ -12,6 +12,7 @@ Current features:
 Planned features:
 * Implementation of noninteractive flags and arguments
 * Interactive servers list sorted by date accessed, so default is most recent
+* Extend mcserver-motd to handle all server.properties edits, especially to permit easy toggling of options such as command blocks
 
 ## Screenshots
 ![screenshot of directory tree](http://i.imgur.com/bnUIGwD.png)
@@ -32,7 +33,7 @@ You may need to install pyjavaproperties:
 ## Installation
 Clone the repository with
 
-    $ git clone https://github.com/Rhotias/mcserver.git
+    $ git clone https://github.com/Phidica/mcserver.git
 
 Copy the *mcserver* and *mcserver-motd* files to your directory of choice. *~/.local/bin/* is a good one, if that's on your $PATH. Make the primary script executable with
 
