@@ -2,7 +2,6 @@
 
 # Author: Phidica Veia
 # Create: 2015-07-10
-
 # v0.1: 2015-07-10
 # v1.0: 2015-07-14
 
@@ -24,7 +23,7 @@ _requestServer() # _resultVar
     exit 1
   fi
 
-  # Get array of directories in the serversDir, that aren't backupsDir
+  # Get alphabetical array of directories in the serversDir, that aren't backupsDir
   for file in ${serversDir}/*; do
     if [[ -d "${file}" && "$(basename ${file})" != "$(basename ${backupsDir})" ]]; then
       serversArr+=("$(basename ${file})")
@@ -37,16 +36,28 @@ _requestServer() # _resultVar
     exit 1
   fi
 
-  # Request user input and set _resultVar to the chosen server
+  # Create an array of the indices of elements in serversArr, but they are in reverse chronological order of server modification times
+  local serversArrTimeIdcs=(
+    $(
+      for index in ${!serversArr[*]}; do # Gets an array of the array indices
+        modtimeStr="$(find ${serversDir}/${serversArr[${index}]}/ -exec stat "{}" --printf="%y\n" \; | sort -n -r | head -n 1)" # Most recent modtime of any contained file
+        printf "%s %s\n" "${modtimeStr}" "${index}"
+      done | sort -n -r | awk '{print $4}'
+    )
+  )
+
+  # Print server list
   printf "%s\n" "Select a server by ID"
-  for index in ${!serversArr[*]}; do # Gets an array of the array indices
-    printf "%s\n" "  (${index}) ${serversArr[${index}]}"
+  for index in ${!serversArrTimeIdcs[*]}; do # Gets an array of the array indices
+    printf "%s\n" "  (${index}) ${serversArr[${serversArrTimeIdcs[${index}]}]}" # I'm sure this is very confusing to read; sorry
   done
+
+  # Request user input and set _resultVar to the chosen server
   while true; do
     read -p "[0]: " usrOpt
     if [[ ${usrOpt} -ge 0 && ${usrOpt} -lt ${#serversArr[*]} ]]; then # Checks against total number of entries in array
       # Set the variable which was passed to this function to the chosen server
-      eval ${_requestServer_resultVar}="${serversArr[${usrOpt}]}"
+      eval ${_requestServer_resultVar}="${serversArr[${serversArrTimeIdcs[${usrOpt}]}]}"
       break
     else
       printf "%s\n" "  Invalid selection"
@@ -131,7 +142,7 @@ _new()
   if [[ ${?} == 0 ]]; then
     printf "%s\n" "Done!"
   else
-    printf "%s\n" "Failed with mkdir error ${?}. Aborting backup"
+    printf "%s\n" "Failed with mkdir error ${?}. Aborting server creation"
     exit 1
   fi
 
