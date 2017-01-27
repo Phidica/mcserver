@@ -209,7 +209,7 @@ _new()
       printf "%s\n" "Done!"
 
       printf "%s" "Cleansing imported player data... "
-      rm -rf "${serversDir}/${targetServer}/$(basename ${worldDir})"/{playerdata,stats} >/dev/null 2>&1
+      rm -rf "${serversDir}/${targetServer}/$(basename ${worldDir})"/{playerdata,stats,data/scoreboard.dat} >/dev/null 2>&1
       if [[ ${?} == 0 ]]; then
         printf "%s\n" "Done!"
       else
